@@ -5,19 +5,28 @@
 // All operations have O(1) time complexity.
 //
 // To iterate over an ordered map (where m is a *OrderedMap):
-//	for item := range m.Iter() {
-//		key := item.Key
-//		value:= item.Value
+//	for e:= m.Front; e != nil; e = e.Next() {
+//		key := e.Key
+//		value:= e.Value
 //		// do something with e.Value
 //	}
 //
+// If you want to delete element while iterating,
+// MUST use the following pattern:
+//  var next *orderedmap.Element
+// 	for e := m.First(); e != nil; e = next {
+//		key := e.Key
+// 		// assign e.Next() to the next before deleting e
+//  	next = e.Next()
+// 		m.Delete(key)
+// 	}
 package orderedmap
 
 import (
 	"container/list"
 )
 
-const chbufSize = 32
+// const chbufSize = 32
 
 // OrderedMap holds key-value pairs and remembers
 // the original insertion order of the keys.
@@ -38,7 +47,8 @@ func New() *OrderedMap {
 	}
 }
 
-// ElemVal encapsulates the key-value pair.
+// ElemVal encapsulates the key-value pair which
+// stores in the `Value` field of list element.
 type ElemVal struct {
 	Key   string
 	Value interface{}
@@ -55,7 +65,7 @@ func (m *OrderedMap) Set(key string, value interface{}) {
 	}
 }
 
-// Get retrieves an values from orderedmap under given key.
+// Get retrieves an values from ordered map under given key.
 // If no value was associated with the given key, will return false.
 func (m *OrderedMap) Get(key string) (interface{}, bool) {
 	elem, exist := m.mapper[key]
@@ -81,13 +91,61 @@ func (m *OrderedMap) Delete(key string) {
 func (m *OrderedMap) Len() int { return m.lister.Len() }
 
 // Iter returns a buffered iterator which could be used in a for range loop.
-func (m *OrderedMap) Iter() <-chan ElemVal {
-	ch := make(chan ElemVal, chbufSize)
-	go func() {
-		for e := m.lister.Front(); e != nil; e = e.Next() {
-			ch <- *e.Value.(*ElemVal)
-		}
-		close(ch)
-	}()
-	return ch
+//
+// Deprecated: using channel as iterator, you can't break in a `for` loop,
+// otherwise the following goroutine will block forever and cause goroutine leak.
+// func (m *OrderedMap) Iter() <-chan ElemVal {
+// 	ch := make(chan ElemVal, chbufSize)
+// 	go func() {
+// 		var next *list.Element
+// 		for e := m.lister.Front(); e != nil; e = next {
+// 			// assign e.Next() to `next` before sending `e.Value` to channel,
+// 			// make the delete operation while iterating safe.
+// 			next = e.Next()
+// 			ch <- *e.Value.(*ElemVal)
+// 		}
+// 		close(ch)
+// 	}()
+// 	return ch
+// }
+
+// Element encapsulates the underlying list element and the map's
+// key-value pair, to provide a `Next` method for iterating.
+type Element struct {
+	elem *list.Element
+	*ElemVal
+}
+
+// First returns the first element of ordered map or nil if the orded map is empty.
+func (m *OrderedMap) First() *Element {
+	front := m.lister.Front()
+
+	if front == nil {
+		return nil
+	}
+
+	return &Element{
+		elem: front,
+		ElemVal: &ElemVal{
+			Key:   front.Value.(*ElemVal).Key,
+			Value: front.Value.(*ElemVal).Value,
+		},
+	}
+}
+
+// Next returns the next ordered map element or nil.
+func (e *Element) Next() *Element {
+	next := e.elem.Next()
+
+	if next == nil {
+		return nil
+	}
+
+	return &Element{
+		elem: next,
+		ElemVal: &ElemVal{
+			Key:   next.Value.(*ElemVal).Key,
+			Value: next.Value.(*ElemVal).Value,
+		},
+	}
 }

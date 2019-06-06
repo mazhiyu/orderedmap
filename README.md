@@ -1,9 +1,9 @@
-# ordered map
+# Ordered Map
 This package implements an ordered map, using container/list and build-in map, it remembers the original insertion order of the keys, and primarily used in the situation of needing to pay attention to insertion order, for example first in first out.
 
 All operations have O(1) time complexity.
 
-# example
+# Example
 ```
 // Create a new map.
 m := orderedmap.New()
@@ -13,7 +13,7 @@ m.Set("a", 1)
 
 // Retrieves item from map.
 if elem, exist := m.Get("a"); exist {
-	val := elem.(int)
+  val := elem.(int)
   fmt.Println(val)
 }
 
@@ -21,9 +21,9 @@ m.Set("b", 2)
 m.Set("c", 3)
 
 // Iterates on the map.
-for item := range m.Iter() {
+for e := m.First; e != nil; e = e.Next() {
   key := item.Key
-	val := item.Value.(int)
+  val := item.Value.(int)
   fmt.Printf("key: %v, value: %d\n", key, val)
 }
 
@@ -31,5 +31,5 @@ for item := range m.Iter() {
 m.Delete("a")
 ```
 
-# license
+# License
 MIT (see [LICENSE](https://github.com/mazhiyu/orderedmap/blob/master/LICENSE) file)

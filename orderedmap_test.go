@@ -126,9 +126,9 @@ func TestIterator(t *testing.T) {
 
 	counter := 0
 	// Iterate over elements.
-	for item := range m.Iter() {
-		key := item.Key
-		val := item.Value
+	for e := m.First(); e != nil; e = e.Next() {
+		key := e.Key
+		val := e.Value
 
 		if key != strconv.Itoa(counter) {
 			t.Error("key was modified.")
@@ -146,5 +146,46 @@ func TestIterator(t *testing.T) {
 
 	if counter != 100 {
 		t.Error("We should have counted 100 elements.")
+	}
+}
+
+func TestIteratorInnerDel(t *testing.T) {
+	m := New()
+
+	// Insert 100 elements.
+	for i := 0; i < 100; i++ {
+		m.Set(strconv.Itoa(i), i)
+	}
+	if m.Len() != 100 {
+		t.Error("map should contain exactly 100 elements.")
+	}
+
+	counter := 0
+	// Iterate over elements.
+	var next *Element
+	for e := m.First(); e != nil; e = next {
+		key := e.Key
+		val := e.Value
+
+		if key != strconv.Itoa(counter) {
+			t.Error("key was modified.")
+		}
+
+		if val.(int) != counter {
+			t.Error("val was modified.")
+		}
+
+		if val == nil {
+			t.Error("Expecting an object.")
+		}
+
+		// assign e.Next() to the next before deleting e
+		next = e.Next()
+		m.Delete(key)
+		counter++
+	}
+
+	if m.Len() != 0 {
+		t.Error("Afeter loop delete map should should be empty.")
 	}
 }
